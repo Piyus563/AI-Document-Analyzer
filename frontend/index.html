@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Document Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+      --bg: #f8fafc;
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(255, 255, 255, 0.3);
+      --text: #0f172a;
+      --subtext: #475569;
+      --border: #e2e8f0;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --accent-light: #e0e7ff;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --shadow: 0 10px 40px -10px rgba(0,0,0,0.08);
+      --glass-blur: blur(12px);
+      --border-radius: 20px;
+    }
+    
+    [data-theme="dark"] {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      --bg: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --card-border: rgba(255, 255, 255, 0.05);
+      --text: #f8fafc;
+      --subtext: #94a3b8;
+      --border: #334155;
+      --accent: #818cf8;
+      --accent-hover: #6366f1;
+      --accent-light: rgba(99, 102, 241, 0.15);
+      --shadow: 0 10px 40px -10px rgba(0,0,0,0.4);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+    
+    body {
+      background: var(--bg-gradient);
+      background-attachment: fixed;
+      color: var(--text);
+      min-height: 100vh;
+      transition: background 0.4s ease, color 0.4s ease;
+      line-height: 1.6;
+    }
+
+    /* NAV */
+    nav {
+      background: var(--card-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.03);
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 1.25rem;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+    .nav-brand span { font-size: 1.6rem; animation: float 3s ease-in-out infinite; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+
+    .theme-btn {
+      background: var(--accent-light);
+      border: 1px solid transparent;
+      color: var(--accent);
+      padding: 10px 20px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .theme-btn:hover {
+      background: var(--accent);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    }
+
+    /* MAIN */
+    main { 
+      max-width: 900px; 
+      margin: 0 auto; 
+      padding: 3rem 1.5rem; 
+      animation: fadeIn 0.6s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* CARDS (Glassmorphism) */
+    .glass-card {
+      background: var(--card-bg);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--card-border);
+      border-radius: var(--border-radius);
+      padding: 2.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 2rem;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .glass-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 50px -15px rgba(0,0,0,0.1);
+    }
+    .glass-card.result-card {
+      padding: 2rem;
+    }
+
+    .upload-card h2 { 
+      font-size: 1.8rem; 
+      margin-bottom: 0.5rem; 
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .upload-card p { color: var(--subtext); font-size: 1rem; margin-bottom: 2rem; }
+
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(255, 255, 255, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+    [data-theme="dark"] .drop-zone { background: rgba(0, 0, 0, 0.2); }
+    
+    .drop-zone::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: var(--accent-light);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 0;
+    }
+    
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      border-style: solid;
+      transform: scale(1.02);
+    }
+    .drop-zone:hover::before, .drop-zone.dragover::before { opacity: 1; }
+    
+    .drop-zone-content { position: relative; z-index: 1; }
+    .drop-zone .icon { 
+      font-size: 3rem; 
+      margin-bottom: 1rem; 
+      display: inline-block;
+      transition: transform 0.3s ease;
+    }
+    .drop-zone:hover .icon { transform: scale(1.1) rotate(5deg); }
+    .drop-zone p { color: var(--subtext); font-size: 1.1rem; margin-bottom: 0.5rem; }
+    .drop-zone strong { color: var(--accent); font-weight: 600; }
+    #fileInput { display: none; }
+
+    .file-info {
+      display: none;
+      align-items: center;
+      gap: 15px;
+      margin-top: 1.5rem;
+      padding: 16px 20px;
+      background: var(--accent-light);
+      border-radius: 12px;
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      animation: slideDown 0.3s ease-out;
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .file-info .file-icon { font-size: 1.8rem; }
+    .file-info .file-name { font-weight: 600; color: var(--text); font-size: 1.05rem; }
+    .file-info .file-size { color: var(--subtext); font-size: 0.85rem; margin-top: 2px; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .analyze-btn {
+      margin-top: 1.5rem;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      color: white;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+    .analyze-btn:hover:not(:disabled) { 
+      transform: translateY(-2px); 
+      box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+    }
+    .analyze-btn:disabled { 
+      background: var(--border); 
+      color: var(--subtext);
+      box-shadow: none;
+      cursor: not-allowed; 
+      background-image: none;
+    }
+
+    /* ERROR */
+    .error-box {
+      display: none;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #ef4444;
+      padding: 1rem 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+      font-size: 0.95rem;
+      align-items: center;
+      gap: 10px;
+      animation: shake 0.5s ease-in-out;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+
+    /* LOADER */
+    .loader-card {
+      display: none;
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+    .spinner-wrap {
+      position: relative;
+      width: 80px; height: 80px;
+      margin: 0 auto 2rem;
+    }
+    .spinner {
+      width: 100%; height: 100%;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-right-color: #a855f7;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-icon {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.5rem;
+    }
+    .loader-card h3 { color: var(--text); font-size: 1.2rem; margin-bottom: 1.5rem; }
+    
+    .steps { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 12px; 
+      max-width: 300px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .step { 
+      font-size: 0.95rem; 
+      color: var(--subtext); 
+      opacity: 0.5; 
+      transition: all 0.4s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+    }
+    .step.active { 
+      opacity: 1; 
+      color: var(--accent); 
+      font-weight: 600; 
+      background: var(--accent-light);
+      transform: translateX(10px);
+    }
+
+    /* RESULTS */
+    #results { display: none; animation: fadeIn 0.8s ease-out; }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: var(--shadow);
+      transition: transform 0.3s ease;
+    }
+    .stat-card:hover { transform: translateY(-5px); }
+    .stat-card .val { 
+      font-size: 2.2rem; 
+      font-weight: 700; 
+      color: var(--accent);
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 5px;
+    }
+    .stat-card .lbl { font-size: 0.9rem; color: var(--subtext); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .card-header .icon { 
+      font-size: 1.5rem; 
+      background: var(--accent-light);
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px;
+    }
+    .card-header h3 { font-size: 1.2rem; font-weight: 600; color: var(--text); }
+
+    /* SUMMARY */
+    .summary-text { line-height: 1.8; color: var(--text); font-size: 1.05rem; }
+
+    /* KEYWORDS */
+    .keywords-wrap { display: flex; flex-wrap: wrap; gap: 10px; }
+    .keyword-tag {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+    .keyword-tag:hover {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    /* SENTIMENT */
+    .sentiment-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .sentiment-badge {
+      padding: 10px 24px;
+      border-radius: 30px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sentiment-badge.positive { background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .sentiment-badge.negative { background: rgba(239, 68, 68, 0.15); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .sentiment-badge.neutral  { background: rgba(245, 158, 11, 0.15); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.3); }
+    
+    [data-theme="dark"] .sentiment-badge.positive { color: #34d399; }
+    [data-theme="dark"] .sentiment-badge.negative { color: #f87171; }
+    [data-theme="dark"] .sentiment-badge.neutral  { color: #fbbf24; }
+    
+    .confidence-pill {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--subtext);
+      padding: 8px 16px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .sentiment-explanation { color: var(--text); font-size: 1rem; line-height: 1.6; }
+
+    /* Q&A */
+    .qa-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      background: var(--bg);
+      transition: all 0.3s ease;
+    }
+    .qa-item:hover { border-color: var(--accent); }
+    .qa-question {
+      padding: 16px 20px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      transition: background 0.2s ease;
+    }
+    .qa-question:hover { background: var(--accent-light); }
+    .qa-answer {
+      padding: 0 20px;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: var(--subtext);
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease, padding 0.3s ease;
+      background: var(--card-bg);
+    }
+    .qa-answer.open { 
+      padding: 0 20px 20px 20px; 
+      max-height: 500px;
+      border-top: 1px solid var(--border);
+      margin-top: 10px;
+      padding-top: 16px;
+    }
+    .qa-chevron { 
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+      color: var(--accent);
+      font-size: 0.8rem;
+    }
+    .qa-chevron.open { transform: rotate(180deg); }
+
+    /* SECTION INSIGHTS */
+    .section-item {
+      display: flex;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .section-num {
+      min-width: 40px; height: 40px;
+      background: var(--accent-light);
+      color: var(--accent);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .section-text { font-size: 0.95rem; line-height: 1.6; color: var(--text); align-self: center; }
+
+    /* EXTRACTED TEXT */
+    .text-toggle {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-left: auto;
+      display: block;
+      transition: all 0.2s ease;
+    }
+    .text-toggle:hover { background: var(--border); }
+    .extracted-text {
+      display: none;
+      margin-top: 1.5rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      font-size: 0.9rem;
+      line-height: 1.8;
+      color: var(--text);
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-family: 'Consolas', monospace;
+    }
+
+    /* CUSTOM SCROLLBAR */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--subtext); }
+
+    /* READABILITY */
+    .readability-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .read-stat {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      text-align: center;
+    }
+    .read-stat .rv { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
+    .read-stat .rl { font-size: 0.8rem; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+    .level-badge {
+      display: inline-block;
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+    .level-easy     { background: rgba(16,185,129,0.15); color: #059669; border: 1px solid rgba(16,185,129,0.3); }
+    .level-medium   { background: rgba(245,158,11,0.15);  color: #d97706; border: 1px solid rgba(245,158,11,0.3); }
+    .level-difficult{ background: rgba(239,68,68,0.15);   color: #dc2626; border: 1px solid rgba(239,68,68,0.3); }
+    .difficult-words-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.5rem; }
+    .diff-word { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); color: var(--danger); padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; }
+
+    /* FEEDBACK */
+    .feedback-item {
+      display: flex;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      align-items: flex-start;
+    }
+    .feedback-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .fb-icon {
+      font-size: 1.4rem;
+      min-width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px;
+    }
+    .fb-icon.warning  { background: rgba(245,158,11,0.15); }
+    .fb-icon.danger   { background: rgba(239,68,68,0.15); }
+    .fb-icon.info     { background: var(--accent-light); }
+    .fb-icon.ats      { background: rgba(16,185,129,0.15); }
+    .fb-icon.academic { background: rgba(139,92,246,0.15); }
+    .fb-icon.report   { background: rgba(59,130,246,0.15); }
+    .fb-title { font-weight: 600; font-size: 1rem; color: var(--text); margin-bottom: 4px; }
+    .fb-detail { font-size: 0.9rem; color: var(--subtext); line-height: 1.6; }
+
+    /* SCORES */
+    .scores-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.2rem;
+    }
+    .score-item { background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 1.2rem; }
+    .score-label { font-size: 0.85rem; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .score-bar-wrap { background: var(--border); border-radius: 10px; height: 10px; overflow: hidden; margin-bottom: 6px; }
+    .score-bar { height: 100%; border-radius: 10px; transition: width 1s cubic-bezier(0.4,0,0.2,1); }
+    .score-val { font-size: 1.3rem; font-weight: 700; color: var(--accent); }
+    .score-overall {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, var(--accent-light), rgba(168,85,247,0.1));
+      border-color: var(--accent);
+      text-align: center;
+    }
+    .score-overall .score-val { font-size: 2rem; }
+
+    /* DOC TYPE BADGE */
+    .doc-type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+    .doc-type-resume   { background: rgba(16,185,129,0.15); color: #059669; border: 1px solid rgba(16,185,129,0.3); }
+    .doc-type-academic { background: rgba(139,92,246,0.15); color: #7c3aed; border: 1px solid rgba(139,92,246,0.3); }
+    .doc-type-report   { background: rgba(59,130,246,0.15); color: #2563eb; border: 1px solid rgba(59,130,246,0.3); }
+    .doc-type-general  { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(99,102,241,0.3); }
+
+    /* SUMMARY TABS */
+    .summary-tabs { display: flex; gap: 8px; margin-bottom: 1rem; }
+    .sum-tab {
+      padding: 6px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--subtext);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .sum-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* DOWNLOAD BTN */
+    .download-btn {
+      background: linear-gradient(135deg, var(--success), #059669);
+      color: white;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+      margin-top: 1rem;
+    }
+    .download-btn:hover { 
+      transform: translateY(-2px); 
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    }
+
+    @media (max-width: 768px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .readability-grid { grid-template-columns: repeat(2, 1fr); }
+      .scores-grid { grid-template-columns: 1fr; }
+      nav { padding: 0 1.5rem; }
+      main { padding: 2rem 1rem; }
+      .glass-card { padding: 1.5rem; }
+    }
+    @media (max-width: 480px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .readability-grid { grid-template-columns: repeat(2, 1fr); }
+      .sentiment-row { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <span>✨</span> AI Document Analyzer
+  </div>
+  <button class="theme-btn" onclick="toggleTheme()">🌙 Dark Mode</button>
+</nav>
+
+<main>
+
+  <!-- Upload Card -->
+  <div class="glass-card upload-card">
+    <h2>Analyze Your Document</h2>
+    <p>Upload a PDF or DOCX file to get an AI-powered summary, keywords, Q&amp;A, and sentiment analysis.</p>
+
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="drop-zone-content">
+        <div class="icon">📄</div>
+        <p><strong>Click to upload</strong> or drag &amp; drop here</p>
+        <p style="font-size:0.85rem; opacity: 0.8; margin-top: 5px;">Supports PDF, DOCX &nbsp;•&nbsp; Max 20MB</p>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".pdf,.docx" />
+
+    <div class="file-info" id="fileInfo">
+      <span class="file-icon" id="fileIcon">📄</span>
+      <div>
+        <div class="file-name" id="fileName"></div>
+        <div class="file-size" id="fileSize"></div>
+      </div>
+    </div>
+
+    <button class="btn analyze-btn" id="analyzeBtn" disabled onclick="analyzeDocument()">
+      ✨ Analyze Document
+    </button>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox" style="display:none;"></div>
+
+  <!-- Loader -->
+  <div class="glass-card loader-card" id="loader">
+    <div class="spinner-wrap">
+      <div class="spinner"></div>
+      <div class="spinner-icon">🪄</div>
+    </div>
+    <h3>Analyzing your document with AI...</h3>
+    <div class="steps">
+      <div class="step" id="step1">📄 Extracting text...</div>
+      <div class="step" id="step2">✍️ Generating summary...</div>
+      <div class="step" id="step3">🔑 Extracting keywords...</div>
+      <div class="step" id="step4">❓ Creating Q&amp;A pairs...</div>
+      <div class="step" id="step5">💬 Analyzing sentiment...</div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="val" id="statWords">—</div>
+        <div class="lbl">Words</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statChars">—</div>
+        <div class="lbl">Characters</div>
+      </div>
+      <div class="stat-card">
+        <div class="val" id="statChunks">—</div>
+        <div class="lbl">Sections</div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="glass-card result-card">
+      <div class="card-header">
+        <span class="icon">📝</span>
+        <h3>AI Summary <span id="docTypeBadge" class="doc-type-badge"></span></h3>
+      </div>
+      <div class="summary-tabs">
+        <button class="sum-tab active" onclick="switchSummary('short', this)">Short Summary</button>
+        <button class="sum-tab" onclick="switchSummary('detailed', this)">Detailed Summary</button>
+      </div>
+      <p class="summary-text" id="summaryShort"></p>
+      <p class="summary-text" id="summaryDetailed" style="display:none"></p>
+    </div>
+
+    <!-- Readability -->
+    <div class="glass-card result-card">
+      <div class="card-header">
+        <span class="icon">📖</span>
+        <h3>Readability Analysis</h3>
+      </div>
+      <span class="level-badge" id="readLevel"></span>
+      <div class="readability-grid">
+        <div class="read-stat"><div class="rv" id="readScore">—</div><div class="rl">Flesch Score</div></div>
+        <div class="read-stat"><div class="rv" id="readAvgSent">—</div><div class="rl">Avg Sentence</div></div>
+        <div class="read-stat"><div class="rv" id="readTime">—</div><div class="rl">Reading Time</div></div>
+        <div class="read-stat"><div class="rv" id="readPassive">—</div><div class="rl">Passive Voice</div></div>
+        <div class="read-stat"><div class="rv" id="readDifficult">—</div><div class="rl">Difficult Words</div></div>
+        <div class="read-stat"><div class="rv" id="readSentences">—</div><div class="rl">Sentences</div></div>
+      </div>
+      <div id="difficultWordsWrap" style="display:none">
+        <div style="font-size:0.9rem; color:var(--subtext); margin-bottom:6px;">Difficult words detected:</div>
+        <div class="difficult-words-wrap" id="difficultWordsList"></div>
+      </div>
+    </div>
+
+    <!-- Keywords -->
+    <div class="glass-card result-card">
+      <div class="card-header">
+        <span class="icon">🔑</span>
+        <h3>Top 10 Keywords</h3>
+      </div>
+      <div class="keywords-wrap" id="keywordsWrap"></div>
+    </div>
+
+    <!-- Sentiment -->
+    <div class="glass-card result-card">
+      <div class="card-header">
+        <span class="icon">💬</span>
+        <h3>Sentiment Analysis</h3>
+      </div>
+      <div class="sentiment-row">
+        <span class="sentiment-badge" id="sentimentBadge"></span>
+        <span class="confidence-pill" id="confidencePill"></span>
+      </div>
+      <p class="sentiment-explanation" id="sentimentExplanation"></p>
+    </div>
+
+    <!-- Q&A -->
+    <div class="glass-card result-card" id="qaCard">
+      <div class="card-header">
+        <span class="icon">❓</span>
+        <h3>Questions &amp; Answers</h3>
+      </div>
+      <div id="qaList"></div>
+    </div>
+
+    <!-- Section Insights -->
+    <div class="glass-card result-card" id="sectionsCard" style="display:none">
+      <div class="card-header">
+        <span class="icon">📊</span>
+        <h3>Section Insights</h3>
+      </div>
+      <div id="sectionsList"></div>
+    </div>
+
+    <!-- AI Feedback -->
+    <div class="glass-card result-card" id="feedbackCard" style="display:none">
+      <div class="card-header">
+        <span class="icon">🤖</span>
+        <h3>AI Feedback &amp; Suggestions</h3>
+      </div>
+      <div id="feedbackList"></div>
+    </div>
+
+    <!-- Errors & Suggestions -->
+    <div class="glass-card result-card" id="errorsCard" style="display:none">
+      <div class="card-header">
+        <span class="icon">🚨</span>
+        <h3>Document Errors &amp; Suggestions</h3>
+      </div>
+      <div class="stats-row" style="margin-bottom: 1rem; grid-template-columns: repeat(4, 1fr);">
+        <div class="stat-card" style="padding: 1rem;">
+          <div class="val" id="errSpelling" style="font-size: 1.5rem;">0</div>
+          <div class="lbl" style="font-size: 0.75rem;">Spelling</div>
+        </div>
+        <div class="stat-card" style="padding: 1rem;">
+          <div class="val" id="errGrammar" style="font-size: 1.5rem;">0</div>
+          <div class="lbl" style="font-size: 0.75rem;">Punctuation</div>
+        </div>
+        <div class="stat-card" style="padding: 1rem;">
+          <div class="val" id="errStyle" style="font-size: 1.5rem;">0</div>
+          <div class="lbl" style="font-size: 0.75rem;">Passive/Weak</div>
+        </div>
+        <div class="stat-card" style="padding: 1rem;">
+          <div class="val" id="errTotal" style="font-size: 1.5rem;">0</div>
+          <div class="lbl" style="font-size: 0.75rem;">Total Issues</div>
+        </div>
+      </div>
+      <div id="errorsList"></div>
+    </div>
+
+    <!-- Overall Score -->
+    <div class="glass-card result-card" id="scoresCard" style="display:none">
+      <div class="card-header">
+        <span class="icon">🏆</span>
+        <h3>Overall Document Score</h3>
+      </div>
+      <div class="scores-grid">
+        <div class="score-item">
+          <div class="score-label">Grammar Score</div>
+          <div class="score-bar-wrap"><div class="score-bar" id="barGrammar" style="width:0%; background: linear-gradient(90deg,#6366f1,#a855f7);"></div></div>
+          <div class="score-val" id="scoreGrammar">—</div><span style="color:var(--subtext);font-size:0.9rem;">/100</span>
+        </div>
+        <div class="score-item">
+          <div class="score-label">Readability Score</div>
+          <div class="score-bar-wrap"><div class="score-bar" id="barReadability" style="width:0%; background: linear-gradient(90deg,#10b981,#059669);"></div></div>
+          <div class="score-val" id="scoreReadability">—</div><span style="color:var(--subtext);font-size:0.9rem;">/100</span>
+        </div>
+        <div class="score-item">
+          <div class="score-label">Content Quality Score</div>
+          <div class="score-bar-wrap"><div class="score-bar" id="barContent" style="width:0%; background: linear-gradient(90deg,#f59e0b,#d97706);"></div></div>
+          <div class="score-val" id="scoreContent">—</div><span style="color:var(--subtext);font-size:0.9rem;">/100</span>
+        </div>
+        <div class="score-item score-overall">
+          <div class="score-label">🏆 Overall AI Score</div>
+          <div class="score-bar-wrap"><div class="score-bar" id="barOverall" style="width:0%; background: linear-gradient(90deg,#6366f1,#a855f7);"></div></div>
+          <div class="score-val" id="scoreOverall">—</div><span style="color:var(--subtext);font-size:0.9rem;">/100</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Extracted Text -->
+    <div class="glass-card result-card">
+      <div class="card-header">
+        <span class="icon">📃</span>
+        <h3>Extracted Text</h3>
+        <button class="text-toggle" onclick="toggleText()">Show Text</button>
+      </div>
+      <pre class="extracted-text" id="extractedText"></pre>
+    </div>
+
+    <!-- Download -->
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <button class="btn download-btn" onclick="downloadReport()" style="flex: 1;">
+        ⬇️ Download Analysis Report (PDF)
+      </button>
+      <button class="btn download-btn" id="downloadCorrectedBtn" onclick="downloadCorrected()" style="flex: 1; background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); display: none;">
+        ✨ Download Corrected Document (DOCX)
+      </button>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  const API = 'http://localhost:5000/api';
+  let selectedFile = null;
+  let lastAnalysis = null;
+
+  // ── Theme ──────────────────────────────────────────────
+  function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.querySelector('.theme-btn').innerHTML = isDark ? '🌙 Dark Mode' : '☀️ Light Mode';
+  }
+
+  // ── Drag & Drop ────────────────────────────────────────
+  const dropZone = document.getElementById('dropZone');
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) setFile(file);
+  });
+
+  document.getElementById('fileInput').addEventListener('change', e => {
+    if (e.target.files[0]) setFile(e.target.files[0]);
+  });
+
+  function setFile(file) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['pdf', 'docx'].includes(ext)) {
+      showError('❌ Unsupported file. Please upload a PDF or DOCX file.');
+      return;
+    }
+    selectedFile = file;
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatSize(file.size);
+    document.getElementById('fileIcon').textContent = ext === 'pdf' ? '📕' : '📘';
+    document.getElementById('fileInfo').style.display = 'flex';
+    document.getElementById('analyzeBtn').disabled = false;
+    
+    // Show corrected DOCX button only if it's a DOCX file
+    const correctedBtn = document.getElementById('downloadCorrectedBtn');
+    if (ext === 'docx') {
+      correctedBtn.style.display = 'inline-flex';
+    } else {
+      correctedBtn.style.display = 'none';
+    }
+
+    hideError();
+    document.getElementById('results').style.display = 'none';
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  // ── Analyze ────────────────────────────────────────────
+  async function analyzeDocument() {
+    if (!selectedFile) return;
+
+    hideError();
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('loader').style.display = 'block';
+    document.getElementById('analyzeBtn').disabled = true;
+    
+    // Smooth scroll to loader
+    document.getElementById('loader').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Animate steps
+    const steps = ['step1','step2','step3','step4','step5'];
+    let i = 0;
+    const stepInterval = setInterval(() => {
+      if (i > 0) document.getElementById(steps[i-1]).classList.remove('active');
+      if (i < steps.length) {
+        document.getElementById(steps[i]).classList.add('active');
+        i++;
+      } else {
+        clearInterval(stepInterval);
+      }
+    }, 1500);
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res = await fetch(`${API}/analyze`, { method: 'POST', body: formData });
+      const data = await res.json();
+      clearInterval(stepInterval);
+
+      if (!res.ok) {
+        showError('❌ ' + (data.error || 'Analysis failed. Please try again.'));
+        return;
+      }
+
+      lastAnalysis = data;
+      renderResults(data);
+
+    } catch (err) {
+      clearInterval(stepInterval);
+      showError('❌ Cannot connect to server. Make sure the backend is running on port 5000.');
+    } finally {
+      document.getElementById('loader').style.display = 'none';
+      document.getElementById('analyzeBtn').disabled = false;
+      steps.forEach(s => document.getElementById(s).classList.remove('active'));
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────
+  function renderResults(data) {
+    // Stats
+    document.getElementById('statWords').textContent = data.word_count?.toLocaleString() || '—';
+    document.getElementById('statChars').textContent = data.char_count?.toLocaleString() || '—';
+    document.getElementById('statChunks').textContent = data.chunk_count || '—';
+
+    // Document Type Badge
+    const dtype = data.doc_type?.type || 'General';
+    const dtypeIcons = { Resume: '📋', Academic: '🎓', Report: '📊', General: '📄' };
+    const badge = document.getElementById('docTypeBadge');
+    badge.textContent = (dtypeIcons[dtype] || '📄') + ' ' + dtype;
+    badge.className = 'doc-type-badge doc-type-' + dtype.toLowerCase();
+
+    // Summary (short + detailed)
+    document.getElementById('summaryShort').textContent = data.short_summary || data.summary || 'No summary available.';
+    document.getElementById('summaryDetailed').textContent = data.summary || 'No summary available.';
+
+    // Readability
+    const r = data.readability || {};
+    const levelClass = { Easy: 'level-easy', Medium: 'level-medium', Difficult: 'level-difficult' };
+    const levelEl = document.getElementById('readLevel');
+    levelEl.textContent = r.level || '—';
+    levelEl.className = 'level-badge ' + (levelClass[r.level] || 'level-medium');
+    document.getElementById('readScore').textContent = r.flesch_score ?? '—';
+    document.getElementById('readAvgSent').textContent = r.avg_sentence_length ? r.avg_sentence_length + ' words' : '—';
+    document.getElementById('readTime').textContent = r.reading_time || '—';
+    document.getElementById('readPassive').textContent = r.passive_voice_pct != null ? r.passive_voice_pct + '%' : '—';
+    document.getElementById('readDifficult').textContent = r.difficult_word_count ?? '—';
+    document.getElementById('readSentences').textContent = r.sentence_count ?? '—';
+    if (r.difficult_words && r.difficult_words.length > 0) {
+      const wrap = document.getElementById('difficultWordsList');
+      wrap.innerHTML = r.difficult_words.slice(0, 15).map(w => `<span class="diff-word">${w}</span>`).join('');
+      document.getElementById('difficultWordsWrap').style.display = 'block';
+    }
+
+    // Keywords (top 10)
+    const kw = document.getElementById('keywordsWrap');
+    kw.innerHTML = '';
+    (data.keywords || []).slice(0, 10).forEach((k, i) => {
+      const tag = document.createElement('span');
+      tag.className = 'keyword-tag';
+      tag.textContent = `#${i+1} ${k}`;
+      kw.appendChild(tag);
+    });
+
+    // Sentiment
+    const s = data.sentiment || {};
+    const sentBadge = document.getElementById('sentimentBadge');
+    const sentimentText = s.sentiment || 'Neutral';
+    const emoji = sentimentText.toLowerCase() === 'positive' ? '😊' : (sentimentText.toLowerCase() === 'negative' ? '😞' : '😐');
+    sentBadge.innerHTML = `${emoji} ${sentimentText}`;
+    sentBadge.className = 'sentiment-badge ' + (s.sentiment || 'neutral').toLowerCase();
+    document.getElementById('confidencePill').textContent = '🎯 Confidence: ' + (s.confidence || 'Medium');
+    document.getElementById('sentimentExplanation').textContent = s.explanation || '';
+
+    // Q&A
+    const qaList = document.getElementById('qaList');
+    qaList.innerHTML = '';
+    (data.qa_pairs || []).forEach((qa, i) => {
+      qaList.innerHTML += `
+        <div class="qa-item">
+          <div class="qa-question" onclick="toggleQA(${i})">
+            <span>Q${i+1}: ${qa.question}</span>
+            <span class="qa-chevron" id="chev${i}">▼</span>
+          </div>
+          <div class="qa-answer" id="ans${i}">${qa.answer}</div>
+        </div>`;
+    });
+
+    // Section Insights
+    const si = data.section_insights || [];
+    if (si.length > 0) {
+      document.getElementById('sectionsList').innerHTML = si.map(s => `
+        <div class="section-item">
+          <div class="section-num">${s.section}</div>
+          <div class="section-text">${s.insight}</div>
+        </div>`).join('');
+      document.getElementById('sectionsCard').style.display = 'block';
+    } else {
+      document.getElementById('sectionsCard').style.display = 'none';
+    }
+
+    // AI Feedback
+    const feedback = data.ai_feedback || [];
+    if (feedback.length > 0) {
+      document.getElementById('feedbackList').innerHTML = feedback.map(fb => `
+        <div class="feedback-item">
+          <div class="fb-icon ${fb.type}">${fb.icon}</div>
+          <div>
+            <div class="fb-title">${fb.title}</div>
+            <div class="fb-detail">${fb.detail}</div>
+          </div>
+        </div>`).join('');
+      document.getElementById('feedbackCard').style.display = 'block';
+    } else {
+      document.getElementById('feedbackCard').style.display = 'none';
+    }
+
+    // Errors & Suggestions
+    const errors = data.errors || {};
+    if (errors.summary && errors.summary.total > 0) {
+      document.getElementById('errSpelling').textContent = errors.summary.spelling_count || 0;
+      document.getElementById('errGrammar').textContent = (errors.summary.grammar_count || 0) + (errors.summary.punctuation_count || 0) + (errors.summary.capitalization_count || 0);
+      document.getElementById('errStyle').textContent = (errors.summary.passive_voice_count || 0) + (errors.summary.weak_words_count || 0);
+      document.getElementById('errTotal').textContent = errors.summary.total || 0;
+      let errorHtml = '';
+      if (errors.spelling?.length > 0)
+        errorHtml += `<div class="section-item"><div class="section-num" style="background:rgba(239,68,68,0.15);color:#ef4444;">A</div><div class="section-text"><b>Spelling:</b> ${errors.spelling.slice(0,5).map(e=>`"${e.word}" &rarr; ${e.suggestion}`).join(', ')}</div></div>`;
+      if (errors.grammar?.length > 0)
+        errorHtml += `<div class="section-item"><div class="section-num" style="background:rgba(239,68,68,0.15);color:#ef4444;">G</div><div class="section-text"><b>Grammar:</b> ${errors.grammar.slice(0,3).map(e=>e.issue).join('<br>')}</div></div>`;
+      if (errors.passive_voice?.length > 0)
+        errorHtml += `<div class="section-item"><div class="section-num" style="background:rgba(245,158,11,0.15);color:#f59e0b;">!</div><div class="section-text"><b>Passive Voice:</b> Found ${errors.passive_voice.length} instances. (e.g. "${errors.passive_voice[0].pattern}")</div></div>`;
+      if (errors.long_sentences?.length > 0)
+        errorHtml += `<div class="section-item"><div class="section-num" style="background:rgba(245,158,11,0.15);color:#f59e0b;">...</div><div class="section-text"><b>Long Sentences:</b> ${errors.long_sentences.length} sentences are too long (&gt;40 words).</div></div>`;
+      document.getElementById('errorsList').innerHTML = errorHtml;
+      document.getElementById('errorsCard').style.display = 'block';
+    } else {
+      document.getElementById('errorsCard').style.display = 'none';
+    }
+
+    // Scores
+    const scores = data.scores || {};
+    if (Object.keys(scores).length > 0) {
+      renderScore('scoreGrammar',    'barGrammar',    scores.grammar);
+      renderScore('scoreReadability','barReadability', scores.readability);
+      renderScore('scoreContent',    'barContent',    scores.content_quality);
+      renderScore('scoreOverall',    'barOverall',    scores.overall);
+      document.getElementById('scoresCard').style.display = 'block';
+    }
+
+    // Extracted text
+    let preview = data.extracted_text || '';
+    if (data.full_text_available) preview += '\n\n... [Document truncated for preview] ...';
+    document.getElementById('extractedText').textContent = preview;
+
+    document.getElementById('results').style.display = 'block';
+    setTimeout(() => document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+  }
+
+  // ── Summary Tabs ───────────────────────────────────────
+  function switchSummary(type, btn) {
+    document.querySelectorAll('.sum-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('summaryShort').style.display    = type === 'short'    ? 'block' : 'none';
+    document.getElementById('summaryDetailed').style.display = type === 'detailed' ? 'block' : 'none';
+  }
+
+  // ── Score Bar ──────────────────────────────────────────
+  function renderScore(valId, barId, value) {
+    document.getElementById(valId).textContent = value ?? '—';
+    setTimeout(() => {
+      document.getElementById(barId).style.width = (value ?? 0) + '%';
+    }, 300);
+  }
+
+  // ── Q&A Toggle ─────────────────────────────────────────
+  function toggleQA(i) {
+    const ans = document.getElementById('ans' + i);
+    const chev = document.getElementById('chev' + i);
+    ans.classList.toggle('open');
+    chev.classList.toggle('open');
+  }
+
+  // ── Text Toggle ────────────────────────────────────────
+  function toggleText() {
+    const el = document.getElementById('extractedText');
+    const btn = document.querySelector('.text-toggle');
+    const visible = el.style.display === 'block';
+    el.style.display = visible ? 'none' : 'block';
+    btn.textContent = visible ? 'Show Text' : 'Hide Text';
+  }
+
+  // ── Download Report ────────────────────────────────────
+  async function downloadReport() {
+    if (!lastAnalysis) return;
+    
+    const btn = document.querySelector('.download-btn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Generating PDF...';
+    btn.disabled = true;
+    
+    try {
+      const res = await fetch(`${API}/download-report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(lastAnalysis)
+      });
+      if (!res.ok) { showError('❌ Failed to generate report.'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'analysis_report.pdf';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showError('❌ Cannot connect to server for report download.');
+    } finally {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }
+  }
+
+  // ── Download Corrected DOCX ────────────────────────────
+  async function downloadCorrected() {
+    if (!selectedFile) return;
+    if (!selectedFile.name.toLowerCase().endsWith('.docx')) {
+      showError('❌ Only DOCX files can be corrected currently.');
+      return;
+    }
+    
+    const btn = document.getElementById('downloadCorrectedBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Processing...';
+    btn.disabled = true;
+    
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    
+    try {
+      const res = await fetch(`${API}/download-corrected`, {
+        method: 'POST',
+        body: formData
+      });
+      if (!res.ok) { showError('❌ Failed to generate corrected document.'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Corrected_' + selectedFile.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showError('❌ Cannot connect to server for correction download.');
+    } finally {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────────────
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = msg;
+    box.style.display = 'flex';
+  }
+  function hideError() {
+    document.getElementById('errorBox').style.display = 'none';
+  }
+</script>
+</body>
+</html>
